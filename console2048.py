@@ -159,6 +159,37 @@ def print_grid(grid):
         print("|{}|".format(meat))
         print(wall)
 
+def score_grid(grid):
+    return max([i for row in grid for i in row])
+
+class Game:
+    def __init__(self, cols=4, rows=4):
+        self.grid = get_start_grid(cols, rows)
+        self.moves = [functools.partial(push_all_rows, left=True),
+                      functools.partial(push_all_rows, left=False),
+                      functools.partial(push_all_columns, up=True),
+                      functools.partial(push_all_columns, up=False)]
+        self.score = score_grid(self.grid)
+        self.end = False
+
+    def move(self, direction):
+        grid_copy = copy.deepcopy(self.grid)
+        self.moves[direction](self.grid)
+
+        if self.grid == grid_copy:
+            return 0
+        if prepare_next_turn(self.grid):
+            score = score_grid(self.grid)
+            reward = score - self.score
+            self.score = score
+            return reward
+
+        self.end = True
+        return 0
+
+    def display(self):
+        print_grid(self.grid)
+
 
 def main():
     """
@@ -166,28 +197,23 @@ def main():
     Update game state.
     Display updates to user.
     """
-    functions = {"a" : functools.partial(push_all_rows, left=True),
-                 "d" : functools.partial(push_all_rows, left=False),
-                 "w" : functools.partial(push_all_columns, up=True),
-                 "s" : functools.partial(push_all_columns, up=False)}
-    grid = get_start_grid(*map(int,sys.argv[1:]))
-    print_grid(grid)
+    keypad = "adws"
+    game = Game(*map(int,sys.argv[1:]))
+    game.display()
     while True:
-        grid_copy = copy.deepcopy(grid)
         get_input = getch("Enter direction (w/a/s/d): ")
-        if get_input in functions:
-            functions[get_input](grid)
+        if get_input in keypad:
+            game.move(keypad.index(get_input))
         elif get_input == "q":
             break
         else:
             print("\nInvalid choice.")
             continue
-        if grid != grid_copy:
-            if not prepare_next_turn(grid):
-                print_grid(grid)
-                print("You Lose!")
-                break
-        print_grid(grid)
+        if game.end:
+            game.display()
+            print("You Lose!")
+            break
+        game.display()
     print("Thanks for playing.")
 
 
