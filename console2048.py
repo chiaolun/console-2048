@@ -172,6 +172,15 @@ class Game:
         self.score = score_grid(self.grid)
         self.end = False
 
+    def post_states(self):
+        for move in move_list:
+            grid_copy = copy.deepcopy(self.grid)
+            move(grid_copy)
+            if grid_copy != self.grid:
+                yield grid_copy
+            else:
+                yield None
+
     def move(self, direction):
         grid_copy = copy.deepcopy(self.grid)
         move_list[direction](self.grid)
