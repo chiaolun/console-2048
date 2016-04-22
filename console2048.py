@@ -178,6 +178,7 @@ class Game:
 
         if self.grid == grid_copy:
             return 0
+
         if prepare_next_turn(self.grid):
             score = score_grid(self.grid)
             reward = score - self.score
