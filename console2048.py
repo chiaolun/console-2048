@@ -103,6 +103,10 @@ def push_all_columns(grid, up=True):
         new = push_row(column, up)
         set_column(grid, i, new)
 
+move_list = [functools.partial(push_all_rows, left=True),
+             functools.partial(push_all_rows, left=False),
+             functools.partial(push_all_columns, up=True),
+             functools.partial(push_all_columns, up=False)]
 
 def get_empty_cells(grid):
     """Return a list of coordinate pairs corresponding to empty cells."""
@@ -165,19 +169,15 @@ def score_grid(grid):
 class Game:
     def __init__(self, cols=4, rows=4):
         self.grid = get_start_grid(cols, rows)
-        self.moves = [functools.partial(push_all_rows, left=True),
-                      functools.partial(push_all_rows, left=False),
-                      functools.partial(push_all_columns, up=True),
-                      functools.partial(push_all_columns, up=False)]
         self.score = score_grid(self.grid)
         self.end = False
 
     def move(self, direction):
         grid_copy = copy.deepcopy(self.grid)
-        self.moves[direction](self.grid)
+        move_list[direction](self.grid)
 
         if self.grid == grid_copy:
-            return 0
+            return None
 
         if prepare_next_turn(self.grid):
             score = score_grid(self.grid)
