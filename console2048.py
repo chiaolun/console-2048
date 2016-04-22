@@ -63,8 +63,8 @@ def push_row(row, left=True):
     new_row = [item for item in row if item]
     for i in range(len(new_row)-1):
         if new_row[i] and new_row[i] == new_row[i+1]:
-            new_row[i], new_row[i+1:] = new_row[i]*2, new_row[i+2:]+[""]
-    new_row += [""]*(len(row)-len(new_row))
+            new_row[i], new_row[i+1:] = new_row[i]*2, new_row[i+2:]+[0]
+    new_row += [0]*(len(row)-len(new_row))
     return new_row if left else new_row[::-1]
 
 
@@ -130,7 +130,7 @@ def any_possible_moves(grid):
 
 def get_start_grid(cols=4, rows=4):
     """Create the start grid and seed it with two numbers."""
-    grid = [[""]*cols for i in range(rows)]
+    grid = [[0]*cols for i in range(rows)]
     for i in range(2):
         empties = get_empty_cells(grid)
         y,x = random.choice(empties)
@@ -193,4 +193,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
