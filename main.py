@@ -45,12 +45,12 @@ def main():
             state0 = state1
         SRSs.append((state0, 0., np.zeros_like(state0)))
 
-        SRSs = SRSs[-100000:]
         if len(SRSs) < 100000:
-            print "len(SRSs):", len(SRSs)
             continue
 
         state0s, rewards, state1s = zip(*SRSs)
+        SRSs = SRSs[-99000:]
+
         state0s = np.array(state0s)
         rewards = np.array(rewards)
         state1s = np.array(state1s)
@@ -73,11 +73,12 @@ def main():
             )
             train_batches += 1
 
+        nepoch += 1
+
         coefs = neural2048.get_coefs(network)
         neural2048.save_coefs(coefs)
 
-        nepoch += 1
-        print("{:6d}) score:{:6d} training loss:\t\t{:.6f}".format(
+        print("{:6d}) score: {:6d} training loss: {:.6f}".format(
             nepoch, game.score,
             train_err / train_batches
         ))
