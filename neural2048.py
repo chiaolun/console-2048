@@ -23,18 +23,25 @@ def iterate_minibatches(*arrays, **options):
         yield tuple(x[excerpt] for x in arrays)
 
 
-def log2_if_ge0(x):
-    return T.switch(T.le(x, 0), 0, T.log2(x))
+def norm_state(x):
+    x = T.switch(T.le(x, 0), 0, T.log2(x).clip(0, 19))
+    x = lasagne.utils.one_hot(x, 20).dimshuffle(0, 3, 1, 2)
+    return x
 
 
 def get_network():
     network = lasagne.layers.InputLayer(
-        shape=(None, nrows, ncols)
+        shape=(500, 20, nrows, ncols)
     )
-    # Apply log2 to values
-    network = lasagne.layers.NonlinearityLayer(
-        network, log2_if_ge0
+
+    network = lasagne.layers.Conv2DLayer(
+        network, 64, (2, 2),
     )
+
+    network = lasagne.layers.Conv2DLayer(
+        network, 64, (2, 2),
+    )
+
     for _ in range(3):
         network = lasagne.layers.DenseLayer(
             network, num_units=256,
@@ -53,13 +60,17 @@ def get_network():
 
 def compile_V(network):
     state = T.tensor3('state')
-    V = lasagne.layers.get_output(network, inputs=state)
+    V = lasagne.layers.get_output(network, inputs=norm_state(state))
     return theano.function([state], V, allow_input_downcast=True)
 
 
 def compile_trainer(network):
     state1 = T.tensor3('state1')
-    Q1 = lasagne.layers.get_output(network, inputs=state1).flatten()
+    Q1 = (lasagne.layers
+          .get_output(
+              network,
+              inputs=norm_state(state1))
+          .flatten())
     T.set_subtensor(Q1[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
 
     # Q_fn = theano.function(
@@ -77,7 +88,11 @@ def compile_trainer(network):
 
     # Create a loss expression for training, i.e., a scalar objective
     # we want to minimize
-    Q0 = lasagne.layers.get_output(network, inputs=state0).flatten()
+    Q0 = (lasagne.layers
+          .get_output(
+              network,
+              inputs=norm_state(state0))
+          .flatten())
 
     error_vec = Q0 - reward - alpha * Q1
     error = (error_vec ** 2).mean()
