@@ -4,6 +4,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 import lasagne
+import cPickle
 
 nrows = 4
 ncols = 4
@@ -31,7 +32,7 @@ def norm_state(x):
 
 def get_network():
     network = lasagne.layers.InputLayer(
-        shape=(500, 20, nrows, ncols)
+        shape=(None, 20, nrows, ncols)
     )
 
     network = lasagne.layers.Conv2DLayer(
@@ -123,14 +124,13 @@ def compile_trainer(network):
 
 def load_coefs():
     try:
-        with np.load("network.npz") as coefs:
-            return [coefs[k].astype(theano.config.floatX)
-                    for k in sorted(coefs)]
+        return cPickle.load(file("network.pkl"))
     except IOError:
         return None
 
 
 def save_coefs(coefs):
+    cPickle.dump(coefs, file("network.pkl", "w"))
     np.savez("network", *coefs)
 
 
