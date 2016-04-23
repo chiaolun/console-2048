@@ -69,7 +69,7 @@ def main():
                 state0s_batch,
                 reward0s_batch,
                 state1s_batch,
-                1.
+                0.9
             )
             train_batches += 1
 

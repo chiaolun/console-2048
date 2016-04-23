@@ -58,18 +58,26 @@ def compile_V(network):
 
 
 def compile_trainer(network):
+    state1 = T.tensor3('state1')
+    Q1 = lasagne.layers.get_output(network, inputs=state1).flatten()
+    T.set_subtensor(Q1[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
+
+    # Q_fn = theano.function(
+    #     [state1],
+    #     Q1_prev,
+    #     on_unused_input='warn',
+    #     allow_input_downcast=True
+    # )
+
     # Prepare Theano variables for inputs and targets
     alpha = T.scalar("alpha")
     state0 = T.tensor3('state0')
     reward = T.vector('reward')
-    state1 = T.tensor3('state1')
+    # Q1 = T.vector('Q1')
 
     # Create a loss expression for training, i.e., a scalar objective
     # we want to minimize
     Q0 = lasagne.layers.get_output(network, inputs=state0).flatten()
-    Q1 = lasagne.layers.get_output(network, inputs=state1).flatten()
-
-    T.set_subtensor(Q1[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
 
     error_vec = Q0 - reward - alpha * Q1
     error = (error_vec ** 2).mean()
@@ -82,12 +90,18 @@ def compile_trainer(network):
     # Compile a function performing a training step on a mini-batch
     # (by giving the updates dictionary) and returning the
     # corresponding training loss:
+
     train_fn = theano.function(
         [state0, reward, state1, alpha],
         error,
         updates=updates,
         on_unused_input='warn',
-        allow_input_downcast=True)
+        allow_input_downcast=True
+    )
+
+    # def trainer(state0, reward, state1, alpha):
+    #     Q1 = Q_fn(state1)
+    #     return train_fn(state0, reward, Q1, alpha)
 
     return train_fn
 
