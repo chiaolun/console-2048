@@ -78,7 +78,7 @@ def set_column(grid, column_index, new):
     Replace the values in the grid at column_index with the values in new.
     The grid is changed inplace.
     """
-    for i,row in enumerate(grid):
+    for i, row in enumerate(grid):
         row[column_index] = new[i]
 
 
@@ -88,7 +88,7 @@ def push_all_rows(grid, left=True):
     Pass left=True for left and left=False for right.
     The grid will be changed inplace.
     """
-    for i,row in enumerate(grid):
+    for i, row in enumerate(grid):
         grid[i] = push_row(row, left)
 
 
@@ -98,7 +98,7 @@ def push_all_columns(grid, up=True):
     Pass up=True for up and up=False for down.
     The grid will be changed inplace.
     """
-    for i,val in enumerate(grid[0]):
+    for i, val in enumerate(grid[0]):
         column = get_column(grid, i)
         new = push_row(column, up)
         set_column(grid, i, new)
@@ -108,13 +108,14 @@ move_list = [functools.partial(push_all_rows, left=True),
              functools.partial(push_all_columns, up=True),
              functools.partial(push_all_columns, up=False)]
 
+
 def get_empty_cells(grid):
     """Return a list of coordinate pairs corresponding to empty cells."""
     empty = []
-    for j,row in enumerate(grid):
-        for i,val in enumerate(row):
+    for j, row in enumerate(grid):
+        for i, val in enumerate(row):
             if not val:
-                empty.append((j,i))
+                empty.append((j, i))
     return empty
 
 
@@ -123,11 +124,11 @@ def any_possible_moves(grid):
     if get_empty_cells(grid):
         return True
     for row in grid:
-        if any(row[i]==row[i+1] for i in range(len(row)-1)):
+        if any(row[i] == row[i+1] for i in range(len(row)-1)):
             return True
-    for i,val in enumerate(grid[0]):
+    for i, val in enumerate(grid[0]):
         column = get_column(grid, i)
-        if any(column[i]==column[i+1] for i in range(len(column)-1)):
+        if any(column[i] == column[i+1] for i in range(len(column)-1)):
             return True
     return False
 
@@ -137,7 +138,7 @@ def get_start_grid(cols=4, rows=4):
     grid = [[0]*cols for i in range(rows)]
     for i in range(2):
         empties = get_empty_cells(grid)
-        y,x = random.choice(empties)
+        y, x = random.choice(empties)
         grid[y][x] = 2 if random.random() < 0.9 else 4
     return grid
 
@@ -148,7 +149,7 @@ def prepare_next_turn(grid):
     any_possible_moves after this change has been made.
     """
     empties = get_empty_cells(grid)
-    y,x = random.choice(empties)
+    y, x = random.choice(empties)
     grid[y][x] = 2 if random.random() < 0.9 else 4
     return any_possible_moves(grid)
 
@@ -163,8 +164,10 @@ def print_grid(grid):
         print("|{}|".format(meat))
         print(wall)
 
+
 def score_grid(grid):
     return max([i for row in grid for i in row])
+
 
 class Game:
     def __init__(self, cols=4, rows=4):
@@ -208,7 +211,7 @@ def main():
     Display updates to user.
     """
     keypad = "adws"
-    game = Game(*map(int,sys.argv[1:]))
+    game = Game(*map(int, sys.argv[1:]))
     game.display()
     while True:
         get_input = getch("Enter direction (w/a/s/d): ")
