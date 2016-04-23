@@ -23,9 +23,17 @@ def iterate_minibatches(*arrays, **options):
         yield tuple(x[excerpt] for x in arrays)
 
 
+def log2_if_ge0(x):
+    return T.switch(T.le(x, 0), 0, T.log2(x))
+
+
 def get_network():
     network = lasagne.layers.InputLayer(
         shape=(None, nrows, ncols)
+    )
+    # Apply log2 to values
+    network = lasagne.layers.NonlinearityLayer(
+        network, log2_if_ge0
     )
     for _ in range(3):
         network = lasagne.layers.DenseLayer(
