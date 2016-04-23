@@ -49,7 +49,7 @@ def main():
             continue
 
         state0s, rewards, state1s = zip(*SRSs)
-        SRSs = SRSs[-99000:]
+        SRSs = SRSs[-99999:]
 
         state0s = np.array(state0s)
         rewards = np.array(rewards)
@@ -57,26 +57,28 @@ def main():
 
         train_err = 0
         train_batches = 0
-        for (
-                state0s_batch,
-                reward0s_batch,
-                state1s_batch,
-        ) in neural2048.iterate_minibatches(
-            state0s, rewards, state1s,
-            batchsize=500, shuffle=True,
-        ):
-            train_err += trainer(
-                state0s_batch,
-                reward0s_batch,
-                state1s_batch,
-                0.99
-            )
-            train_batches += 1
+        for _ in range(100):
+            for (
+                    state0s_batch,
+                    reward0s_batch,
+                    state1s_batch,
+            ) in neural2048.iterate_minibatches(
+                state0s, rewards, state1s,
+                batchsize=500, shuffle=True,
+            ):
+                train_err += trainer(
+                    state0s_batch,
+                    reward0s_batch,
+                    state1s_batch,
+                    0.99
+                )
+                train_batches += 1
 
         nepoch += 1
 
-        coefs = neural2048.get_coefs(network)
-        neural2048.save_coefs(coefs)
+        neural2048.save_coefs(
+            neural2048.get_coefs(network)
+        )
 
         game.display()
         print("{:6d}) \tscore: {:6d} "
