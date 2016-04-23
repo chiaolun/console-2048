@@ -35,7 +35,7 @@ def main():
     SRSs = []
     nepoch = 0
     while True:
-        epsilon = max(0.01, 1 - nepoch / 1000.)
+        epsilon = max(0.01, 0.5 - nepoch / 1000.)
         state0 = None
         game = Game()
         for state1, reward in game_loop(game, V, epsilon):

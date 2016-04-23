@@ -43,10 +43,9 @@ def get_network():
         network, 64, (2, 2),
     )
 
-    for _ in range(3):
+    for _ in range(2):
         network = lasagne.layers.DenseLayer(
-            network, num_units=256,
-            nonlinearity=lasagne.nonlinearities.rectify,
+            network, num_units=512,
             W=lasagne.init.GlorotUniform()
         )
         # network = lasagne.layers.normalization.BatchNormLayer(
@@ -72,7 +71,7 @@ def compile_trainer(network):
               network,
               inputs=norm_state(state1))
           .flatten())
-    T.set_subtensor(Q1[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
+    Q1 = T.set_subtensor(Q1[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
 
     # Q_fn = theano.function(
     #     [state1],
@@ -131,7 +130,6 @@ def load_coefs():
 
 def save_coefs(coefs):
     cPickle.dump(coefs, file("network.pkl", "w"))
-    np.savez("network", *coefs)
 
 
 def get_coefs(network):
