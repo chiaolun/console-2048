@@ -35,7 +35,7 @@ def main():
     SRSs = []
     nepoch = 0
     while True:
-        epsilon = max(0.01, 1 - nepoch / 10000.)
+        epsilon = max(0.01, 1 - nepoch / 1000.)
         state0 = None
         game = Game()
         for state1, reward in game_loop(game, V, epsilon):
@@ -69,7 +69,7 @@ def main():
                 state0s_batch,
                 reward0s_batch,
                 state1s_batch,
-                0.9
+                0.99
             )
             train_batches += 1
 
