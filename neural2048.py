@@ -37,10 +37,13 @@ def get_network():
     )
     for _ in range(3):
         network = lasagne.layers.DenseLayer(
-            network, num_units=320,
+            network, num_units=256,
             nonlinearity=lasagne.nonlinearities.rectify,
             W=lasagne.init.GlorotUniform()
         )
+        # network = lasagne.layers.normalization.BatchNormLayer(
+        #     network
+        # )
     network = lasagne.layers.DenseLayer(
         network, num_units=1,
         nonlinearity=None,

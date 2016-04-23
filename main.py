@@ -32,10 +32,10 @@ def main():
     coefs = neural2048.load_coefs()
     if coefs is not None:
         neural2048.set_coefs(network, coefs)
-    epsilon = 0.01
     SRSs = []
     nepoch = 0
     while True:
+        epsilon = max(0, 1 - nepoch / 10000)
         state0 = None
         game = Game()
         for state1, reward in game_loop(game, V, epsilon):
@@ -69,7 +69,7 @@ def main():
                 state0s_batch,
                 reward0s_batch,
                 state1s_batch,
-                0.9
+                1.
             )
             train_batches += 1
 
@@ -78,10 +78,13 @@ def main():
         coefs = neural2048.get_coefs(network)
         neural2048.save_coefs(coefs)
 
-        print("{:6d}) score: {:6d} training loss: {:.6f}".format(
-            nepoch, game.score,
-            train_err / train_batches
-        ))
+        game.display()
+        print("{:6d}) \tscore: {:6d} "
+              "\ttraining loss: {:.6f} "
+              "\tepsilon: {:.2f}".format(
+                  nepoch, game.score,
+                  train_err / train_batches,
+                  epsilon))
 
 if __name__ == "__main__":
     main()
