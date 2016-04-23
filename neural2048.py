@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
 import numpy as np
-import time
-import random
 import theano
 import theano.tensor as T
 import lasagne
-from console2048 import Game
 
 nrows = 4
 ncols = 4
+
 
 def iterate_minibatches(*arrays, **options):
     batchsize = options.pop("batchsize")
@@ -24,50 +22,84 @@ def iterate_minibatches(*arrays, **options):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield tuple(x[excerpt] for x in arrays)
 
+
 def get_network():
     network = lasagne.layers.InputLayer(
         shape=(None, nrows, ncols)
     )
-    network = lasagne.layers.DenseLayer(
-        network, num_units=512,
-        nonlinearity=lasagne.nonlinearities.rectify,
-        W=lasagne.init.GlorotUniform()
-    )
+    for _ in range(3):
+        network = lasagne.layers.DenseLayer(
+            network, num_units=320,
+            nonlinearity=lasagne.nonlinearities.rectify,
+            W=lasagne.init.GlorotUniform()
+        )
     network = lasagne.layers.DenseLayer(
         network, num_units=1,
         nonlinearity=None,
     )
     return network
 
-def save_network(network):
-    np.savez("network", *lasagne.layers.get_all_param_values(network))
 
-def load_network():
-    network = get_network()
+def compile_V(network):
+    state = T.tensor3('state')
+    V = lasagne.layers.get_output(network, inputs=state)
+    return theano.function([state], V, allow_input_downcast=True)
 
+
+def compile_trainer(network):
+    # Prepare Theano variables for inputs and targets
+    alpha = T.scalar("alpha")
+    state0 = T.tensor3('state0')
+    reward = T.vector('reward')
+    state1 = T.tensor3('state1')
+
+    # Create a loss expression for training, i.e., a scalar objective
+    # we want to minimize
+    Q0 = lasagne.layers.get_output(network, inputs=state0).flatten()
+    Q1 = lasagne.layers.get_output(network, inputs=state1).flatten()
+
+    T.set_subtensor(Q1[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
+
+    error_vec = Q0 - reward - alpha * Q1
+    error = (error_vec ** 2).mean()
+
+    # Create update expressions for training, i.e., how to modify the
+    # parameters at each training step.
+    params = lasagne.layers.get_all_params(network, trainable=True)
+    updates = lasagne.updates.adam(error, params)
+
+    # Compile a function performing a training step on a mini-batch
+    # (by giving the updates dictionary) and returning the
+    # corresponding training loss:
+    train_fn = theano.function(
+        [state0, reward, state1, alpha],
+        error,
+        updates=updates,
+        on_unused_input='warn',
+        allow_input_downcast=True)
+
+    return train_fn
+
+
+def load_coefs():
     try:
-        with np.load("network.npz") as saved_coefs:
-            lasagne.layers.set_all_param_values(
-                network,
-                [saved_coefs[k].astype(theano.config.floatX)
-                 for k in sorted(saved_coefs)]
-            )
+        with np.load("network.npz") as coefs:
+            return [coefs[k].astype(theano.config.floatX)
+                    for k in sorted(coefs)]
     except IOError:
-        pass
+        return None
 
-    return network
 
-def random_val(_):
-    return random.random()
+def save_coefs(coefs):
+    np.savez("network", *coefs)
 
-def game_loop(val_func):
-    game = Game()
-    while True:
-        moves = [(val_func(x), i)
-                 for i, x in enumerate(game.post_states())
-                 if x is not None]
-        if len(moves) == 0:
-            break
-        chosen_move, chosen_state = max(moves)
-        reward = game.move(chosen_move)
-        yield chosen_state, reward
+
+def get_coefs(network):
+    return lasagne.layers.get_all_param_values(network)
+
+
+def set_coefs(network, coefs):
+    lasagne.layers.set_all_param_values(
+        network,
+        coefs
+    )
