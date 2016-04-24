@@ -2,7 +2,7 @@
 
 import random
 import numpy as np
-from console2048 import Game
+from model import Game
 
 
 def game_loop(game, val_func, epsilon):
@@ -45,11 +45,11 @@ def main():
             state0 = state1
         SRSs.append((state0, 0., np.zeros_like(state0)))
 
-        if len(SRSs) < 100000:
+        if len(SRSs) < max(100000, nepoch * 100):
             continue
 
         state0s, rewards, state1s = zip(*SRSs)
-        SRSs = SRSs[-99999:]
+        # SRSs = SRSs[-99999:]
 
         state0s = np.array(state0s)
         rewards = np.array(rewards)
@@ -57,22 +57,21 @@ def main():
 
         train_err = 0
         train_batches = 0
-        for _ in range(100):
-            for (
-                    state0s_batch,
-                    reward0s_batch,
-                    state1s_batch,
-            ) in neural2048.iterate_minibatches(
-                state0s, rewards, state1s,
-                batchsize=500, shuffle=True,
-            ):
-                train_err += trainer(
-                    state0s_batch,
-                    reward0s_batch,
-                    state1s_batch,
-                    0.99
-                )
-                train_batches += 1
+        for (
+                state0s_batch,
+                reward0s_batch,
+                state1s_batch,
+        ) in neural2048.iterate_minibatches(
+            state0s, rewards, state1s,
+            batchsize=5000, shuffle=True,
+        ):
+            train_err += trainer(
+                state0s_batch,
+                reward0s_batch,
+                state1s_batch,
+                0.9
+            )
+            train_batches += 1
 
         nepoch += 1
 
