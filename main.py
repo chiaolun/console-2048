@@ -35,7 +35,7 @@ def main():
     SRSs = []
     nepoch = 0
     while True:
-        epsilon = max(0.01, 0.5 - nepoch / 1000.)
+        epsilon = max(0.01, 0.1 - nepoch / 10000.)
         state0 = None
         game = Game()
         for state1, reward in game_loop(game, V, epsilon):
@@ -45,11 +45,11 @@ def main():
             state0 = state1
         SRSs.append((state0, 0., np.zeros_like(state0)))
 
-        if len(SRSs) < max(100000, nepoch * 100):
+        if len(SRSs) < 10000:
             continue
 
         state0s, rewards, state1s = zip(*SRSs)
-        # SRSs = SRSs[-99999:]
+        SRSs = []
 
         state0s = np.array(state0s)
         rewards = np.array(rewards)
@@ -63,13 +63,13 @@ def main():
                 state1s_batch,
         ) in neural2048.iterate_minibatches(
             state0s, rewards, state1s,
-            batchsize=5000, shuffle=True,
+            batchsize=500, shuffle=True,
         ):
             train_err += trainer(
                 state0s_batch,
                 reward0s_batch,
                 state1s_batch,
-                0.9
+                1.
             )
             train_batches += 1
 
