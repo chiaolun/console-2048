@@ -4,7 +4,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 import lasagne
-from lasagne.layers.dnn import Conv2DDNNLayer as conv2d
+from lasagne.layers.dnn import Conv3DDNNLayer as conv3d
 import cPickle
 
 nrows = 4
@@ -27,17 +27,20 @@ def iterate_minibatches(*arrays, **options):
 
 def norm_state(x):
     x = T.switch(T.le(x, 0), 0, T.log2(x).clip(0, 19))
-    x = lasagne.utils.one_hot(x, 20).dimshuffle(0, 3, 1, 2)
+    x = lasagne.utils.one_hot(x, 20).dimshuffle(0, 'x', 3, 1, 2)
     return x
 
 
 def get_network():
     network = lasagne.layers.InputLayer(
-        shape=(None, 20, nrows, ncols)
+        shape=(None, 1, 20, nrows, ncols)
     )
 
+    for size in [400, 400, 400, 400]:
+        network = conv3d(network, size, (3, 1, 1))
+
     for size in [400, 200, 100, 50, 25]:
-        network = conv2d(network, size, 3, pad="same")
+        network = conv3d(network, size, (1, 3, 3), pad="same")
 
     network = lasagne.layers.DenseLayer(
         network, num_units=1,
