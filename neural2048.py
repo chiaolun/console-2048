@@ -4,6 +4,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 import lasagne
+from lasagne.layers.dnn import Conv2DDNNLayer as conv2d
 import cPickle
 
 nrows = 4
@@ -35,22 +36,9 @@ def get_network():
         shape=(None, 20, nrows, ncols)
     )
 
-    network = lasagne.layers.Conv2DLayer(
-        network, 64, (2, 2),
-    )
+    for size in [400, 200, 100, 50, 25]:
+        network = conv2d(network, size, 3, pad="same")
 
-    network = lasagne.layers.Conv2DLayer(
-        network, 64, (2, 2),
-    )
-
-    for _ in range(2):
-        network = lasagne.layers.DenseLayer(
-            network, num_units=512,
-            W=lasagne.init.GlorotUniform()
-        )
-        # network = lasagne.layers.normalization.BatchNormLayer(
-        #     network
-        # )
     network = lasagne.layers.DenseLayer(
         network, num_units=1,
         nonlinearity=None,
