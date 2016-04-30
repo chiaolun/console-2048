@@ -22,6 +22,26 @@ def game_loop(game, val_func, epsilon):
         yield chosen_state, reward
 
 
+def gl2srs(gl):
+    state0 = None
+    for state1, reward in gl:
+        state1 = np.array(state1)
+        if state0 is not None:
+            yield (state0, reward, state1)
+        state0 = state1
+    yield (state0, 0., np.zeros_like(state0))
+
+transforms = [
+    lambda x: x,
+    lambda x: np.rot90(x, k=1),
+    lambda x: np.rot90(x, k=2),
+    lambda x: np.rot90(x, k=3),
+    lambda x: np.rot90(np.fliplr(x), k=1),
+    lambda x: np.rot90(np.fliplr(x), k=2),
+    lambda x: np.rot90(np.fliplr(x), k=3),
+]
+
+
 def main():
     import theano.sandbox.cuda
     theano.sandbox.cuda.use("gpu")
@@ -33,23 +53,29 @@ def main():
     if coefs is not None:
         neural2048.set_coefs(network, coefs)
     SRSs = []
+    scores = []
     nepoch = 0
     while True:
         epsilon = max(0.01, 0.1 - nepoch / 10000.)
-        state0 = None
         game = Game()
-        for state1, reward in game_loop(game, V, epsilon):
-            state1 = np.array(state1)
-            if state0 is not None:
-                SRSs.append((state0, reward, state1))
-            state0 = state1
-        SRSs.append((state0, 0., np.zeros_like(state0)))
+
+        gl = game_loop(game, V, epsilon)
+        for state0, reward, state1 in gl2srs(gl):
+            for transform0 in transforms:
+                SRSs.append((
+                    transform0(state0),
+                    reward,
+                    transform0(state1)
+                ))
+        scores.append(game.score)
 
         if len(SRSs) < 10000:
             continue
 
         state0s, rewards, state1s = zip(*SRSs)
         SRSs = []
+        score_avg = sum(scores) / float(len(scores))
+        scores = []
 
         state0s = np.array(state0s)
         rewards = np.array(rewards)
@@ -63,7 +89,7 @@ def main():
                 state1s_batch,
         ) in neural2048.iterate_minibatches(
             state0s, rewards, state1s,
-            batchsize=500, shuffle=True,
+            batchsize=128, shuffle=True,
         ):
             train_err += trainer(
                 state0s_batch,
@@ -75,15 +101,21 @@ def main():
 
         nepoch += 1
 
-        neural2048.save_coefs(
-            neural2048.get_coefs(network)
-        )
+        while True:
+            try:
+                neural2048.save_coefs(
+                    neural2048.get_coefs(network)
+                )
+                break
+            except KeyboardInterrupt:
+                print "Retrying coef save"
+                continue
 
-        game.display()
-        print("{:6d}) \tscore: {:6d} "
+        # game.display()
+        print("{:6d}) \tscore: {:6.0f} "
               "\ttraining loss: {:.6f} "
               "\tepsilon: {:.2f}".format(
-                  nepoch, game.score,
+                  nepoch, score_avg,
                   train_err / train_batches,
                   epsilon))
 
