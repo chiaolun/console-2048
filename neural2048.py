@@ -29,15 +29,14 @@ def iterate_minibatches(*arrays, **options):
 
 
 def norm_state(x):
-    x = T.switch(T.le(x, 0), 0, T.log2(x))  # .clip(0, 19))
-    # x = lasagne.utils.one_hot(x, 20).dimshuffle(0, 'x', 3, 1, 2)
-    x = x.dimshuffle(0, 'x', 1, 2)
+    x = T.switch(T.le(x, 0), 0, T.log2(x).clip(0, 19))
+    x = lasagne.utils.one_hot(x, 20).dimshuffle(0, 3, 1, 2)
     return x
 
 
 def get_network():
     network = lasagne.layers.InputLayer(
-        shape=(None, 1, nrows, ncols)
+        shape=(None, 20, nrows, ncols)
     )
 
     for size in [400, 200, 100, 50, 25]:
