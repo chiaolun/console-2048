@@ -73,7 +73,8 @@ def main():
             continue
 
         state0s, rewards, state1s = zip(*SRSs)
-        SRSs = []
+        np.random.shuffle(SRSs)
+        SRSs = SRSs[-5000:]
         score_avg = sum(scores) / float(len(scores))
         scores = []
 
@@ -89,7 +90,7 @@ def main():
                 state1s_batch,
         ) in neural2048.iterate_minibatches(
             state0s, rewards, state1s,
-            batchsize=128, shuffle=True,
+            batchsize=128, shuffle=False,
         ):
             train_err += trainer(
                 state0s_batch,
