@@ -64,7 +64,11 @@ def main():
 
         SRSs = []
         scores = []
+        counter = 0
         while len(SRSs) < 1000000:
+            if len(SRSs) - counter > 100000:
+                counter = len(SRSs)
+                print "{0:8d} / {1:8d}".format(counter, 1000000)
             game = Game()
             gl = game_loop(game, model, epsilon)
             for state0, reward, state1 in gl2srs(gl):
