@@ -89,10 +89,13 @@ def main():
     except IOError:
         pass
 
+    SRSs = []
     while True:
         epsilon = 0.05
 
-        SRSs = []
+        np.random.shuffle(SRSs)
+        SRSs = SRSs[-500000:]
+
         scores = []
         counter = 0
         while len(SRSs) < 1000000:
