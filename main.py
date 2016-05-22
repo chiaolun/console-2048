@@ -68,7 +68,7 @@ def main():
         while len(SRSs) < 1000000:
             if len(SRSs) - counter > 100000:
                 counter = len(SRSs)
-                print "{0:8d} / {1:8d}".format(counter, 1000000)
+                print "len(SRSs): {0:8d} / {1:8d}".format(counter, 1000000)
             game = Game()
             gl = game_loop(game, model, epsilon)
             for state0, reward, state1 in gl2srs(gl):
@@ -86,7 +86,7 @@ def main():
         model = neural2048.fit_new_model(model, SRSs, alpha=0.9)
         while True:
             try:
-                model.save_weights('network.h5')
+                model.save_weights('network.h5', overwrite=True)
             except KeyboardInterrupt:
                 continue
             break
