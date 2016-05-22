@@ -61,7 +61,7 @@ def fit_new_model(model, SRSs, alpha):
             state0s_test,
             targets_test
         ),
-        nb_epoch=20, batch_size=2048,
+        nb_epoch=1000, batch_size=2048,
         callbacks=[EarlyStopping(patience=2)]
     )
 
