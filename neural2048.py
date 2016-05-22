@@ -31,6 +31,8 @@ def iterate_minibatches(*arrays, **options):
 def norm_state(x):
     x = T.switch(T.le(x, 0), 0, T.log2(x).clip(0, 19))
     x = lasagne.utils.one_hot(x, 20).dimshuffle(0, 3, 1, 2)
+
+    # x = T.switch(T.le(x, 0), 0, T.log2(x))
     return x
 
 
@@ -39,8 +41,14 @@ def get_network():
         shape=(None, 20, nrows, ncols)
     )
 
-    for size in [400, 200, 100, 50, 25]:
+    for size in [600, 300, 100]:
         network = conv2d(network, size, (3, 3), pad="same")
+
+    # for _ in range(3):
+    #     network = lasagne.layers.DenseLayer(
+    #         network, num_units=500,
+    #         nonlinearity=None,
+    #     )
 
     network = lasagne.layers.DenseLayer(
         network, num_units=1,
@@ -57,25 +65,25 @@ def compile_V(network):
 
 def compile_trainer(network):
     state1 = T.tensor3('state1')
-    Q1 = (lasagne.layers
-          .get_output(
-              network,
-              inputs=norm_state(state1))
-          .flatten())
-    Q1 = T.set_subtensor(Q1[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
+    Q1_prev = (lasagne.layers
+               .get_output(
+                   network,
+                   inputs=norm_state(state1))
+               .flatten())
+    Q1_prev = T.set_subtensor(Q1_prev[T.eq(state1.sum(axis=(1, 2)), 0)], 0.)
 
-    # Q_fn = theano.function(
-    #     [state1],
-    #     Q1_prev,
-    #     on_unused_input='warn',
-    #     allow_input_downcast=True
-    # )
+    Q_fn = theano.function(
+        [state1],
+        Q1_prev,
+        on_unused_input='warn',
+        allow_input_downcast=True
+    )
 
     # Prepare Theano variables for inputs and targets
     alpha = T.scalar("alpha")
     state0 = T.tensor3('state0')
     reward = T.vector('reward')
-    # Q1 = T.vector('Q1')
+    Q1 = T.vector('Q1')
 
     # Create a loss expression for training, i.e., a scalar objective
     # we want to minimize
@@ -98,18 +106,18 @@ def compile_trainer(network):
     # corresponding training loss:
 
     train_fn = theano.function(
-        [state0, reward, state1, alpha],
+        [state0, reward, Q1, alpha],
         error,
         updates=updates,
         on_unused_input='warn',
         allow_input_downcast=True
     )
 
-    # def trainer(state0, reward, state1, alpha):
-    #     Q1 = Q_fn(state1)
-    #     return train_fn(state0, reward, Q1, alpha)
+    def trainer(state0, reward, state1, alpha):
+        Q1 = Q_fn(state1)
+        return train_fn(state0, reward, Q1, alpha)
 
-    return train_fn
+    return trainer
 
 
 def load_coefs():

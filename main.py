@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import random
+from collections import defaultdict
 import numpy as np
 from model import Game
 
@@ -69,13 +70,17 @@ def main():
                 ))
         scores.append(game.score)
 
-        if len(SRSs) < 10000:
+        if len(SRSs) < 100000:
             continue
 
-        state0s, rewards, state1s = zip(*SRSs)
         np.random.shuffle(SRSs)
+        state0s, rewards, state1s = zip(*SRSs[:5000])
         SRSs = SRSs[-5000:]
         score_avg = sum(scores) / float(len(scores))
+        score_hist = defaultdict(int)
+        for score0 in scores:
+            score_hist[score0] += 1
+
         scores = []
 
         state0s = np.array(state0s)
@@ -96,7 +101,7 @@ def main():
                 state0s_batch,
                 reward0s_batch,
                 state1s_batch,
-                1.
+                0.9
             )
             train_batches += 1
 
@@ -113,6 +118,7 @@ def main():
                 continue
 
         # game.display()
+        print sorted(score_hist.items())
         print("{:6d}) \tscore: {:6.0f} "
               "\ttraining loss: {:.6f} "
               "\tepsilon: {:.2f}".format(
