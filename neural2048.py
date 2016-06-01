@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 import numpy as np
-import cPickle
-from sklearn.cross_validation import train_test_split
+# import cPickle
+# from sklearn.cross_validation import train_test_split
+import keras
+from keras import backend as K
 from keras.models import Sequential
-from keras.layers.core import Dense, Activation, Dropout, Flatten
+from keras.layers.core import Dense, Activation, Dropout, Lambda, Flatten
 from keras.layers.normalization import BatchNormalization
-from keras.callbacks import EarlyStopping
+# from keras.callbacks import EarlyStopping
 
 
 nrows = 4
@@ -15,54 +17,52 @@ ncols = 4
 
 def get_model():
     model = Sequential()
-    model.add(Flatten(input_shape=(nrows, ncols)))
-    model.add(BatchNormalization())
-    model.add(Dense(500))
-    model.add(BatchNormalization())
-    model.add(Activation("relu"))
-    model.add(Dropout(0.5))
+
+    model.add(Lambda(
+        lambda x: K.switch(K.T.le(x, 0), 0, K.T.log2(x)),
+        input_shape=(nrows, ncols)
+    ))
+
+    model.add(Flatten())
 
     model.add(Dense(500))
     model.add(BatchNormalization())
     model.add(Activation("relu"))
     model.add(Dropout(0.5))
 
-    model.add(Dense(output_dim=1))
+    model.add(Dense(500))
+    model.add(BatchNormalization())
+    model.add(Activation("relu"))
+    model.add(Dropout(0.5))
+
+    model.add(Dense(output_dim=4))
+    model.add(Activation("softmax"))
+
     model.compile(loss='mse', optimizer="adam")
     return model
 
 
-def fit_new_model(model, SRSs, alpha):
-    state0s, rewards, state1s = zip(*SRSs)
+def fit_model(model, SMRs, nepochs=1):
+    states, moves, rewards = zip(*SMRs)
 
-    state0s = np.array(state0s)
+    states = np.array(states)
+    moves = np.array(moves)
     rewards = np.array(rewards)
-    state1s = np.array(state1s)
 
-    Q1s = model.predict(state1s).flatten()
-    Q1s[state1s.max(axis=-1).max(axis=-1) == 0] = 0.
-    targets = rewards + alpha * Q1s
+    rewards = rewards.astype(keras.backend.floatx())
+    states = states.astype(keras.backend.floatx())
 
-    (
-        state0s_train,
-        state0s_test,
-        targets_train,
-        targets_test
-    ) = train_test_split(
-        state0s, targets,
-        test_size=0.1
+    rewards -= rewards.mean()
+    rewards /= rewards.std()
+
+    rewards_mat = np.zeros((len(rewards), 4))
+    rewards_mat[
+        np.arange(len(rewards)),
+        moves
+    ] = rewards
+
+    model.fit(
+        states, rewards_mat,
+        nb_epoch=nepochs,
+        batch_size=128,
     )
-
-    new_model = get_model()
-    new_model.fit(
-        state0s_train,
-        targets_train,
-        validation_data=(
-            state0s_test,
-            targets_test
-        ),
-        nb_epoch=1000, batch_size=512,
-        callbacks=[EarlyStopping(patience=2)]
-    )
-
-    return new_model

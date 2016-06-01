@@ -8,58 +8,44 @@ import neural2048
 
 
 class game_loop():
-    def __init__(self, epsilon):
-        self.epsilon = epsilon
+    def __init__(self):
         self.game = Game()
         self.done = False
         self.state = None
-        self.SRSs = []
+        self.states = []
+        self.moves = []
+        self.rewards = []
         self.generate_choices()
 
     def generate_choices(self):
         self.choices = [
-            (i, x)
+            i
             for i, x in enumerate(self.game.post_states())
             if x is not None
         ]
-
-    def get_states(self):
-        if self.done:
-            return np.empty(0)
-
-        self.moves, states = zip(*self.choices)
-
-        return np.array(states)
+        if self.game.end:
+            self.done = True
+            self.state = None
+        else:
+            self.state = np.array(self.game.grid)
 
     def move(self, scores):
         if self.done:
             return
 
-        if random.random() > self.epsilon:
-            chosen_move, chosen_state = self.choices[scores.flatten().argmax()]
-        else:
-            chosen_move, chosen_state = random.choice(self.choices)
+        scores = scores[self.choices]
+        scores /= scores.sum()
 
+        chosen_move = np.random.choice(self.choices, p=scores)
         chosen_reward = self.game.move(chosen_move)
 
-        if self.state is not None:
-            self.SRSs.append((
-                self.state,
-                self.reward,
-                chosen_state
-            ))
+        assert chosen_reward is not None
 
-        self.state = chosen_state
-        self.reward = chosen_reward
+        self.states.append(self.state)
+        self.moves.append(chosen_move)
+        self.rewards.append(chosen_reward)
 
         self.generate_choices()
-        if len(self.choices) == 0:
-            self.done = True
-            self.SRSs.append((
-                chosen_state,
-                chosen_reward,
-                np.zeros_like(chosen_state)
-            ))
 
 
 def score2hist(scores):
@@ -76,32 +62,34 @@ def main():
     except IOError:
         pass
 
-    SRSs = []
     while True:
-        epsilon = 0.05
-
-        np.random.shuffle(SRSs)
-        SRSs = SRSs[-500000:]
-
         scores = []
         counter = 0
-        while len(SRSs) < 1000000:
-            if len(SRSs) - counter > 100000:
-                counter = len(SRSs)
-                print "len(SRSs): {0:8d} / {1:8d}".format(counter, 1000000)
-            gl = game_loop(epsilon)
+        SMRs = []
+        while len(SMRs) < 100000:
+            if len(SMRs) - counter > 10000:
+                counter = len(SMRs)
+                print "len(SMRs): {0:8d} / {1:8d}".format(counter, 100000)
+            gl = game_loop()
             while True:
-                states = gl.get_states()
-                if len(states) == 0:
-                    SRSs.extend(gl.SRSs)
+                state = gl.state
+                if state is None:
+                    SMRs.extend(
+                        zip(gl.states,
+                            gl.moves,
+                            np.array(gl.rewards)
+                            [::-1]
+                            .cumsum()
+                            [::-1])
+                    )
                     break
-                gl.move(model.predict(states))
+                gl.move(model.predict(state[np.newaxis, ...])[0])
             scores.append(gl.game.score)
 
         score_hist = score2hist(scores)
         print sorted(score_hist.items())
 
-        model = neural2048.fit_new_model(model, SRSs, alpha=0.9)
+        neural2048.fit_model(model, SMRs, nepochs=10)
         while True:
             try:
                 model.save_weights('network.h5', overwrite=True)
