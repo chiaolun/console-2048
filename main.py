@@ -73,14 +73,10 @@ def main():
             while True:
                 state = gl.state
                 if state is None:
-                    SMRs.extend(
-                        zip(gl.states,
-                            gl.moves,
-                            np.array(gl.rewards)
-                            [::-1]
-                            .cumsum()
-                            [::-1])
-                    )
+                    rewards = np.array(gl.rewards)
+                    rewards[rewards < 128] = 0.
+                    rewards = rewards[::-1].cumsum()[::-1]
+                    SMRs.extend(zip(gl.states, gl.moves, rewards))
                     break
                 gl.move(model.predict(state[np.newaxis, ...])[0])
             scores.append(gl.game.score)
