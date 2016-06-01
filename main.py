@@ -7,17 +7,6 @@ from model import Game
 import neural2048
 
 
-transforms = [
-    lambda x: x,
-    lambda x: np.rot90(x, k=1),
-    lambda x: np.rot90(x, k=2),
-    lambda x: np.rot90(x, k=3),
-    lambda x: np.rot90(np.fliplr(x), k=1),
-    lambda x: np.rot90(np.fliplr(x), k=2),
-    lambda x: np.rot90(np.fliplr(x), k=3),
-]
-
-
 class game_loop():
     def __init__(self, epsilon):
         self.epsilon = epsilon
@@ -54,12 +43,11 @@ class game_loop():
         chosen_reward = self.game.move(chosen_move)
 
         if self.state is not None:
-            for transform0 in transforms:
-                self.SRSs.append((
-                    transform0(self.state),
-                    self.reward,
-                    transform0(chosen_state)
-                ))
+            self.SRSs.append((
+                self.state,
+                self.reward,
+                chosen_state
+            ))
 
         self.state = chosen_state
         self.reward = chosen_reward
@@ -67,12 +55,11 @@ class game_loop():
         self.generate_choices()
         if len(self.choices) == 0:
             self.done = True
-            for transform0 in transforms:
-                self.SRSs.append((
-                    transform0(chosen_state),
-                    chosen_reward,
-                    np.zeros_like(chosen_state)
-                ))
+            self.SRSs.append((
+                chosen_state,
+                chosen_reward,
+                np.zeros_like(chosen_state)
+            ))
 
 
 def score2hist(scores):
