@@ -4,33 +4,8 @@ import random
 from collections import defaultdict
 import numpy as np
 from model import Game
+import neural2048
 
-
-def game_loop(game, val_func, epsilon):
-    while True:
-        choices = [(i, x)
-                   for i, x in enumerate(game.post_states())
-                   if x is not None]
-        if len(choices) == 0:
-            break
-        moves, states = zip(*choices)
-        scores = val_func(np.array(states)).flatten()
-        if random.random() > epsilon:
-            chosen_move, chosen_state = choices[scores.argmax()]
-        else:
-            chosen_move, chosen_state = random.choice(choices)
-        reward = game.move(chosen_move)
-        yield chosen_state, reward
-
-
-def gl2srs(gl):
-    state0 = None
-    for state1, reward in gl:
-        state1 = np.array(state1)
-        if state0 is not None:
-            yield (state0, reward, state1)
-        state0 = state1
-    yield (state0, 0., np.zeros_like(state0))
 
 transforms = [
     lambda x: x,
@@ -43,88 +18,110 @@ transforms = [
 ]
 
 
-def main():
-    import theano.sandbox.cuda
-    theano.sandbox.cuda.use("gpu")
-    import neural2048
-    network = neural2048.get_network()
-    V = neural2048.compile_V(network)
-    trainer = neural2048.compile_trainer(network)
-    coefs = neural2048.load_coefs()
-    if coefs is not None:
-        neural2048.set_coefs(network, coefs)
-    SRSs = []
-    scores = []
-    nepoch = 0
-    while True:
-        epsilon = max(0.01, 0.1 - nepoch / 10000.)
-        game = Game()
+class game_loop():
+    def __init__(self, epsilon):
+        self.epsilon = epsilon
+        self.game = Game()
+        self.done = False
+        self.state = None
+        self.SRSs = []
+        self.generate_choices()
 
-        gl = game_loop(game, V, epsilon)
-        for state0, reward, state1 in gl2srs(gl):
+    def generate_choices(self):
+        self.choices = [
+            (i, x)
+            for i, x in enumerate(self.game.post_states())
+            if x is not None
+        ]
+
+    def get_states(self):
+        if self.done:
+            return np.empty(0)
+
+        self.moves, states = zip(*self.choices)
+
+        return np.array(states)
+
+    def move(self, scores):
+        if self.done:
+            return
+
+        if random.random() > self.epsilon:
+            chosen_move, chosen_state = self.choices[scores.flatten().argmax()]
+        else:
+            chosen_move, chosen_state = random.choice(self.choices)
+
+        chosen_reward = self.game.move(chosen_move)
+
+        if self.state is not None:
             for transform0 in transforms:
-                SRSs.append((
-                    transform0(state0),
-                    reward,
-                    transform0(state1)
+                self.SRSs.append((
+                    transform0(self.state),
+                    self.reward,
+                    transform0(chosen_state)
                 ))
-        scores.append(game.score)
 
-        if len(SRSs) < 100000:
-            continue
+        self.state = chosen_state
+        self.reward = chosen_reward
+
+        self.generate_choices()
+        if len(self.choices) == 0:
+            self.done = True
+            for transform0 in transforms:
+                self.SRSs.append((
+                    transform0(chosen_state),
+                    chosen_reward,
+                    np.zeros_like(chosen_state)
+                ))
+
+
+def score2hist(scores):
+    score_hist = defaultdict(int)
+    for score0 in scores:
+        score_hist[score0] += 1
+    return score_hist
+
+
+def main():
+    model = neural2048.get_model()
+    try:
+        model.load_weights("network.h5")
+    except IOError:
+        pass
+
+    SRSs = []
+    while True:
+        epsilon = 0.05
 
         np.random.shuffle(SRSs)
-        state0s, rewards, state1s = zip(*SRSs[:5000])
-        SRSs = SRSs[-5000:]
-        score_avg = sum(scores) / float(len(scores))
-        score_hist = defaultdict(int)
-        for score0 in scores:
-            score_hist[score0] += 1
+        SRSs = SRSs[-500000:]
 
         scores = []
+        counter = 0
+        while len(SRSs) < 1000000:
+            if len(SRSs) - counter > 100000:
+                counter = len(SRSs)
+                print "len(SRSs): {0:8d} / {1:8d}".format(counter, 1000000)
+            gl = game_loop(epsilon)
+            while True:
+                states = gl.get_states()
+                if len(states) == 0:
+                    SRSs.extend(gl.SRSs)
+                    break
+                gl.move(model.predict(states))
+            scores.append(gl.game.score)
 
-        state0s = np.array(state0s)
-        rewards = np.array(rewards)
-        state1s = np.array(state1s)
+        score_hist = score2hist(scores)
+        print sorted(score_hist.items())
 
-        train_err = 0
-        train_batches = 0
-        for (
-                state0s_batch,
-                reward0s_batch,
-                state1s_batch,
-        ) in neural2048.iterate_minibatches(
-            state0s, rewards, state1s,
-            batchsize=128, shuffle=False,
-        ):
-            train_err += trainer(
-                state0s_batch,
-                reward0s_batch,
-                state1s_batch,
-                0.9
-            )
-            train_batches += 1
-
-        nepoch += 1
-
+        model = neural2048.fit_new_model(model, SRSs, alpha=0.9)
         while True:
             try:
-                neural2048.save_coefs(
-                    neural2048.get_coefs(network)
-                )
-                break
+                model.save_weights('network.h5', overwrite=True)
             except KeyboardInterrupt:
-                print "Retrying coef save"
                 continue
+            break
 
-        # game.display()
-        print sorted(score_hist.items())
-        print("{:6d}) \tscore: {:6.0f} "
-              "\ttraining loss: {:.6f} "
-              "\tepsilon: {:.2f}".format(
-                  nepoch, score_avg,
-                  train_err / train_batches,
-                  epsilon))
 
 if __name__ == "__main__":
     main()
