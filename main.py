@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import random
 from collections import defaultdict
 import numpy as np
 from model import Game
@@ -66,10 +65,10 @@ def main():
         scores = []
         counter = 0
         SMRs = []
-        while len(SMRs) < 100000:
-            if len(SMRs) - counter > 10000:
+        while len(SMRs) < 10000:
+            if len(SMRs) - counter > 1000:
                 counter = len(SMRs)
-                print "len(SMRs): {0:8d} / {1:8d}".format(counter, 100000)
+                print "len(SMRs): {0:8d} / {1:8d}".format(counter, 10000)
             gl = game_loop()
             while True:
                 state = gl.state
@@ -89,7 +88,7 @@ def main():
         score_hist = score2hist(scores)
         print sorted(score_hist.items())
 
-        neural2048.fit_model(model, SMRs, nepochs=10)
+        neural2048.fit_model(model, SMRs, nepochs=1)
         while True:
             try:
                 model.save_weights('network.h5', overwrite=True)

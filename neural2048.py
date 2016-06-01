@@ -6,7 +6,15 @@ import numpy as np
 import keras
 from keras import backend as K
 from keras.models import Sequential
-from keras.layers.core import Dense, Activation, Dropout, Lambda, Flatten
+from keras.layers.core import (
+    Dense,
+    Activation,
+    Dropout,
+    Lambda,
+    Flatten,
+    Reshape,
+)
+from keras.layers.convolutional import Convolution2D
 from keras.layers.normalization import BatchNormalization
 # from keras.callbacks import EarlyStopping
 
@@ -23,12 +31,23 @@ def get_model():
         input_shape=(nrows, ncols)
     ))
 
+    model.add(Reshape((1, nrows, ncols)))
+
+    model.add(Convolution2D(64, 3, 3, border_mode='same'))
+    model.add(Activation("relu"))
+
+    model.add(Convolution2D(64, 3, 3, border_mode='same'))
+    model.add(Activation("relu"))
+
+    model.add(Convolution2D(64, 3, 3, border_mode='same'))
+    model.add(Activation("relu"))
+
     model.add(Flatten())
 
-    model.add(Dense(500))
-    model.add(BatchNormalization())
-    model.add(Activation("relu"))
-    model.add(Dropout(0.5))
+    # model.add(Dense(500))
+    # model.add(BatchNormalization())
+    # model.add(Activation("relu"))
+    # model.add(Dropout(0.5))
 
     model.add(Dense(500))
     model.add(BatchNormalization())
