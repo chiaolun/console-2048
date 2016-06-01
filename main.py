@@ -74,7 +74,7 @@ def main():
                 state = gl.state
                 if state is None:
                     rewards = np.array(gl.rewards)
-                    rewards[rewards < 128] = 0.
+                    # rewards[rewards < 128] = 0.
                     rewards = rewards[::-1].cumsum()[::-1]
                     SMRs.extend(zip(gl.states, gl.moves, rewards))
                     break

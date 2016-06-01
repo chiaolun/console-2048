@@ -33,13 +33,13 @@ def get_model():
 
     model.add(Reshape((1, nrows, ncols)))
 
-    model.add(Convolution2D(64, 3, 3, border_mode='same'))
+    model.add(Convolution2D(32, 3, 3, border_mode='same'))
     model.add(Activation("relu"))
 
-    model.add(Convolution2D(64, 3, 3, border_mode='same'))
+    model.add(Convolution2D(32, 3, 3, border_mode='same'))
     model.add(Activation("relu"))
 
-    model.add(Convolution2D(64, 3, 3, border_mode='same'))
+    model.add(Convolution2D(32, 3, 3, border_mode='same'))
     model.add(Activation("relu"))
 
     model.add(Flatten())
@@ -50,9 +50,9 @@ def get_model():
     # model.add(Dropout(0.5))
 
     model.add(Dense(500))
-    model.add(BatchNormalization())
+    # model.add(BatchNormalization())
     model.add(Activation("relu"))
-    model.add(Dropout(0.5))
+    # model.add(Dropout(0.5))
 
     model.add(Dense(output_dim=4))
     model.add(Activation("softmax"))
@@ -74,11 +74,11 @@ def fit_model(model, SMRs, nepochs=1):
     rewards -= rewards.mean()
     rewards /= rewards.std()
 
-    rewards_mat = np.zeros((len(rewards), 4))
+    rewards_mat = model.predict(states)
     rewards_mat[
         np.arange(len(rewards)),
         moves
-    ] = rewards
+    ] *= (1 + 0.5 * rewards)
 
     model.fit(
         states, rewards_mat,
